@@ -33,11 +33,11 @@ I want the response in one single string having the structure {{"JD Match":"%", 
 """
 
 # Streamlit
-st.title("ATS Match Analyzer")
-st.text("Improve your resume")
-jd = st.text_area("Paste the job Description")
-uploaded_file = st.file_uploader("Upload your Resume", type="pdf", help="Please upload the PDF")
-submit = st.button("Submit")
+st.sidebar.title("ATS Match Analyzer")
+st.sidebar.text("Improve your resume")
+jd = st.sidebar.text_area("Paste the job Description")
+uploaded_file = st.sidebar.file_uploader("Upload your Resume", type="pdf", help="Please upload the PDF")
+submit = st.sidebar.button("Submit")
 
 if submit:
     if uploaded_file is not None:
