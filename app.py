@@ -17,7 +17,7 @@ else:
     genai.configure(api_key=api_key)
 
 def get_gemini_response(input_text):
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(input_text)
     return response.text
 
@@ -47,6 +47,9 @@ submit = st.button("Submit")
 if submit:
     if uploaded_file is not None:
         text = input_pdf_text(uploaded_file)
+        st.text("Input text from PDF:")
+        st.text(text)
+
         response = get_gemini_response(input_prompt.format(text=text, jd=jd))
 
         # Print the raw response for debugging
@@ -58,8 +61,16 @@ if submit:
                 # Strip any leading/trailing whitespace from the response
                 response = response.strip()
 
+                # Log the stripped response
+                st.text("Stripped API Response:")
+                st.text(response)
+
                 # Parse the response
                 parsed_response = json.loads(response)
+
+                # Log the parsed response
+                st.text("Parsed Response:")
+                st.json(parsed_response)
 
                 # Remove the percentage symbol and convert "JD Match" to a numeric type
                 jd_match = float(parsed_response["JD Match"].strip('%'))
@@ -89,6 +100,8 @@ if submit:
                 st.markdown(parsed_response["profile summary"])
             except json.JSONDecodeError as e:
                 st.error(f"Failed to decode the response. The API response is not valid JSON. Error: {e}")
+                st.text("Response received before JSON decoding error:")
+                st.text(response)
         else:
             st.error("Received an empty response from the API. Please check the API call and try again.")
-                
+            
