@@ -10,7 +10,11 @@ import plotly.express as px
 load_dotenv()
 
 # Configure the generative AI model
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+api_key = os.getenv("GOOGLE_API_KEY")
+if not api_key:
+    st.error("Google API key not found. Please set the GOOGLE_API_KEY environment variable.")
+else:
+    genai.configure(api_key=api_key)
 
 def get_gemini_response(input_text):
     model = genai.GenerativeModel('gemini-1.5-flash')
@@ -49,36 +53,39 @@ if submit:
         st.text("Raw API Response:")
         st.text(response)
 
-        try:
-            # Parse the response
-            parsed_response = json.loads(response)
+        if response:
+            try:
+                # Parse the response
+                parsed_response = json.loads(response)
 
-            # Remove the percentage symbol and convert "JD Match" to a numeric type
-            jd_match = float(parsed_response["JD Match"].strip('%'))
+                # Remove the percentage symbol and convert "JD Match" to a numeric type
+                jd_match = float(parsed_response["JD Match"].strip('%'))
 
-            # Create a Plotly figure for the pie chart
-            fig = px.pie(
-                values=[jd_match, 100 - jd_match],
-                names=['Match', 'Mismatch'],
-                title="Matching Percentage",
-                color_discrete_sequence=['lightgreen', 'lightcoral'],
-                labels={'Match': f'{jd_match:.1f}%', 'Mismatch': f'{100 - jd_match:.1f}%'}
-            )
+                # Create a Plotly figure for the pie chart
+                fig = px.pie(
+                    values=[jd_match, 100 - jd_match],
+                    names=['Match', 'Mismatch'],
+                    title="Matching Percentage",
+                    color_discrete_sequence=['lightgreen', 'lightcoral'],
+                    labels={'Match': f'{jd_match:.1f}%', 'Mismatch': f'{100 - jd_match:.1f}%'}
+                )
 
-            # Display the pie chart using st.plotly_chart
-            st.plotly_chart(fig)
+                # Display the pie chart using st.plotly_chart
+                st.plotly_chart(fig)
 
-            # Display missing keywords in red text
-            st.subheader("Missing Keywords")
-            missing_keywords = parsed_response["Missing keywords"]
-            if missing_keywords:
-                st.markdown(f"<p style='color:red'>{', '.join(missing_keywords)}</p>", unsafe_allow_html=True)
-            else:
-                st.markdown("<p style='color:green'>No missing keywords!</p>", unsafe_allow_html=True)
+                # Display missing keywords in red text
+                st.subheader("Missing Keywords")
+                missing_keywords = parsed_response["Missing keywords"]
+                if missing_keywords:
+                    st.markdown(f"<p style='color:red'>{', '.join(missing_keywords)}</p>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<p style='color:green'>No missing keywords!</p>", unsafe_allow_html=True)
 
-            # Display profile summary
-            st.subheader("Profile Summary")
-            st.markdown(parsed_response["profile summary"])
-        except json.JSONDecodeError:
-            st.error("Failed to decode the response. The API response is not valid JSON.")
-                
+                # Display profile summary
+                st.subheader("Profile Summary")
+                st.markdown(parsed_response["profile summary"])
+            except json.JSONDecodeError:
+                st.error("Failed to decode the response. The API response is not valid JSON.")
+        else:
+            st.error("Received an empty response from the API. Please check the API call and try again.")
+            
