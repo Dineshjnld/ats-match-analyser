@@ -17,7 +17,7 @@ else:
     genai.configure(api_key=api_key)
 
 def get_gemini_response(input_text):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-pro')
     response = model.generate_content(input_text)
     return response.text
 
