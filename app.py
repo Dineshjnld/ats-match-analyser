@@ -55,6 +55,9 @@ if submit:
 
         if response:
             try:
+                # Strip any leading/trailing whitespace from the response
+                response = response.strip()
+
                 # Parse the response
                 parsed_response = json.loads(response)
 
@@ -84,8 +87,8 @@ if submit:
                 # Display profile summary
                 st.subheader("Profile Summary")
                 st.markdown(parsed_response["profile summary"])
-            except json.JSONDecodeError:
-                st.error("Failed to decode the response. The API response is not valid JSON.")
+            except json.JSONDecodeError as e:
+                st.error(f"Failed to decode the response. The API response is not valid JSON. Error: {e}")
         else:
             st.error("Received an empty response from the API. Please check the API call and try again.")
-            
+                
