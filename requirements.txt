@@ -4,3 +4,4 @@ google.generativeai
 python-dotenv
 matplotlib==3.4.3
 plotly==5.1.0
+numpy
