@@ -5,103 +5,84 @@ from dotenv import load_dotenv
 import json
 import PyPDF2 as pdf
 import plotly.express as px
-import numpy as np
-
 # Load environment variables
 load_dotenv()
-
 # Configure the generative AI model
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     st.error("Google API key not found. Please set the GOOGLE_API_KEY environment variable.")
 else:
     genai.configure(api_key=api_key)
-
-# Helper function to extract text from PDF
-def extract_pdf_text(uploaded_file):
-    try:
-        reader = pdf.PdfReader(uploaded_file)
-        text = ""
-        for page in range(len(reader.pages)):
-            text += reader.pages[page].extract_text()
-        return text
-    except Exception as e:
-        st.error(f"Error reading PDF: {e}")
-        return ""
-
-# Generate Gemini model response
 def get_gemini_response(input_text):
-    try:
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(input_text)
-        return response.text
-    except Exception as e:
-        st.error(f"Error with Gemini API: {e}")
-        return ""
-
-# Updated Prompt Template
+    model = genai.GenerativeModel('gemini-pro')
+    response = model.generate_content(input_text)
+    return response.text
+def input_pdf_text(uploaded_file):
+    reader = pdf.PdfReader(uploaded_file)
+    text = ""
+    for page in range(len(reader.pages)):
+        page = reader.pages[page]
+        text += page.extract_text()
+    return text
+# Prompt template
 input_prompt = """
-Hey, act like an experienced hiring manager and ATS (Applicant Tracking System) with a deep understanding of tech fields like software engineering, data science, and big data. Your task is to analyze the given resume based on hiring standards and provide the following:
-1. Resume Score (out of 100) based on its quality, relevance, and completeness for general hiring purposes.
-2. A detailed review highlighting strengths, weaknesses, and areas for improvement.
-3. A concise summary of the candidate's profile.
-
-resume: {text}
-Expected Output: {{
-    "Resume Score": "numeric",
-    "Review": "detailed feedback on strengths and weaknesses",
-    "Profile Summary": "concise summary"
-}}
+Hey, act like a skilled or very experienced ATS (applicants tracking system) with a deep understanding of the tech field, software engineering, data science, data analyst, and big data engineer. Your task is to evaluate the resume based on the given job description. You must consider the job market is very competitive, and you should provide the best assistance for improving the resumes. Assign the percentage Matching based on the job description and the missing keyword with high accuracy.
+resume:{text}
+description: {jd}
+I want the response in one single string having the structure {{"JD Match":"%", "Missing keywords":[], "profile summary":"" }}
 """
-
 # Streamlit UI
-st.title("Resume Reviewer for Hiring Portal")
-st.subheader("Evaluate and review resumes for better hiring decisions.")
-
-# Input fields
-uploaded_file = st.file_uploader("Upload Resume (PDF)", type="pdf")
-submit = st.button("Analyze Resume")
-
+st.title("ATS Match Analyzer")
+st.text("Improve your resume")
+jd = st.text_area("Paste the Job Description")
+uploaded_file = st.file_uploader("Upload your Resume", type="pdf", help="Please upload a PDF")
+submit = st.button("Submit")
 if submit:
-    if uploaded_file is None:
-        st.error("Please upload a valid resume file.")
-    else:
-        # Extract text from the uploaded PDF
-        resume_text = extract_pdf_text(uploaded_file)
-
-        if resume_text.strip():
-            st.subheader("Resume Content")
-            st.text(resume_text)
-
-            # Generate the API response
-            prompt = input_prompt.format(text=resume_text)
-            api_response = get_gemini_response(prompt)
-
-            if api_response:
-                try:
-                    # Parse and process the API response
-                    parsed_response = json.loads(api_response.strip())
-                    
-                    # Display Resume Score
-                    st.subheader("Resume Score")
-                    resume_score = parsed_response.get("Resume Score", "N/A")
-                    st.metric(label="Resume Score", value=f"{resume_score}/100")
-
-                    # Display Review
-                    st.subheader("Detailed Review")
-                    review = parsed_response.get("Review", "No review available.")
-                    st.markdown(review)
-
-                    # Display Profile Summary
-                    st.subheader("Profile Summary")
-                    profile_summary = parsed_response.get("Profile Summary", "No summary available.")
-                    st.markdown(profile_summary)
-
-                except json.JSONDecodeError as e:
-                    st.error(f"Error decoding API response: {e}")
-                    st.text("Raw API Response:")
-                    st.text(api_response)
-            else:
-                st.error("No response received from the API. Please check your inputs and try again.")
+    if uploaded_file is not None:
+        text = input_pdf_text(uploaded_file)
+        st.text("Input text from PDF:")
+        st.text(text)
+        response = get_gemini_response(input_prompt.format(text=text, jd=jd))
+        # Print the raw response for debugging
+        st.text("Raw API Response:")
+        st.text(response)
+        if response:
+            try:
+                # Strip any leading/trailing whitespace from the response
+                response = response.strip()
+                # Log the stripped response
+                st.text("Stripped API Response:")
+                st.text(response)
+                # Parse the response
+                parsed_response = json.loads(response)
+                # Log the parsed response
+                st.text("Parsed Response:")
+                st.json(parsed_response)
+                # Remove the percentage symbol and convert "JD Match" to a numeric type
+                jd_match = float(parsed_response["JD Match"].strip('%'))
+                # Create a Plotly figure for the pie chart
+                fig = px.pie(
+                    values=[jd_match, 100 - jd_match],
+                    names=['Match', 'Mismatch'],
+                    title="Matching Percentage",
+                    color_discrete_sequence=['lightgreen', 'lightcoral'],
+                    labels={'Match': f'{jd_match:.1f}%', 'Mismatch': f'{100 - jd_match:.1f}%'}
+                )
+                # Display the pie chart using st.plotly_chart
+                st.plotly_chart(fig)
+                # Display missing keywords in red text
+                st.subheader("Missing Keywords")
+                missing_keywords = parsed_response["Missing keywords"]
+                if missing_keywords:
+                    st.markdown(f"<p style='color:red'>{', '.join(missing_keywords)}</p>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<p style='color:green'>No missing keywords!</p>", unsafe_allow_html=True)
+                # Display profile summary
+                st.subheader("Profile Summary")
+                st.markdown(parsed_response["profile summary"])
+            except json.JSONDecodeError as e:
+                st.error(f"Failed to decode the response. The API response is not valid JSON. Error: {e}")
+                st.text("Response received before JSON decoding error:")
+                st.text(response)
         else:
-            st.error("Failed to extract text from the uploaded resume. Please check the file and try again.")
+            st.error("Received an empty response from the API. Please check the API call and try again.")
