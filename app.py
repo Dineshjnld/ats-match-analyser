@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import json
 import PyPDF2 as pdf
 import plotly.express as px
+import numpy as np
 
 # Load environment variables
 load_dotenv()
